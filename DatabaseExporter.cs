@@ -19,6 +19,11 @@ namespace DbTableExporter
             else
                 throw new ArgumentException("Unsupported dbType.");
 
+            return ExportAllTables(connection, dbType, outputFolder, log);
+        }
+
+        public static int ExportAllTables(IDbConnection connection, string dbType, string outputFolder, Action<string> log = null)
+        {
             Directory.CreateDirectory(outputFolder);
 
             using (connection)
