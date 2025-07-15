@@ -41,9 +41,10 @@ namespace DbTableExporter
                     {
                         log?.Invoke($"Failed to export {table}: {ex.Message}");
                     }
-                }
 
-            return count;
+                }
+                return count;
+            }
         }
 
         private static List<string> GetTableNames(IDbConnection conn, string dbType)
