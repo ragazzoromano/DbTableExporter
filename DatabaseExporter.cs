@@ -11,7 +11,7 @@ namespace DbTableExporter
     {
         public static int ExportAllTables(string connectionString, string dbType, string outputFolder, Action<string> log = null)
         {
-            IDbConnection connection = null;
+            IDbConnection connection;
             if (dbType.ToLower().Contains("sql"))
                 connection = new SqlConnection(connectionString);
             else if (dbType.ToLower().Contains("oracle"))
@@ -19,27 +19,31 @@ namespace DbTableExporter
             else
                 throw new ArgumentException("Unsupported dbType.");
 
-            connection.Open();
-            var tableNames = GetTableNames(connection, dbType);
+            Directory.CreateDirectory(outputFolder);
 
-            int count = 0;
-            foreach (var table in tableNames)
+            using (connection)
             {
-                string filePath = Path.Combine(outputFolder, $"{table}.csv");
-                try
-                {
-                    ExportTable(connection, table, filePath);
-                    count++;
-                    log?.Invoke($"Exported {table} ({filePath})");
-                }
-                catch (Exception ex)
-                {
-                    log?.Invoke($"Failed to export {table}: {ex.Message}");
-                }
-            }
+                connection.Open();
+                var tableNames = GetTableNames(connection, dbType);
 
-            connection.Close();
-            return count;
+                int count = 0;
+                foreach (var table in tableNames)
+                {
+                    string filePath = Path.Combine(outputFolder, $"{table}.csv");
+                    try
+                    {
+                        ExportTable(connection, table, filePath);
+                        count++;
+                        log?.Invoke($"Exported {table} ({filePath})");
+                    }
+                    catch (Exception ex)
+                    {
+                        log?.Invoke($"Failed to export {table}: {ex.Message}");
+                    }
+                }
+
+                return count;
+            }
         }
 
         private static List<string> GetTableNames(IDbConnection conn, string dbType)
@@ -62,7 +66,10 @@ namespace DbTableExporter
         {
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = $"SELECT * FROM \"{tableName}\"";
+                if (conn is SqlConnection)
+                    cmd.CommandText = $"SELECT * FROM [{tableName}]";
+                else
+                    cmd.CommandText = $"SELECT * FROM \"{tableName}\"";
                 using (var reader = cmd.ExecuteReader())
                 using (var writer = new StreamWriter(filePath))
                 {
