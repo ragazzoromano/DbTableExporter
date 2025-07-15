@@ -11,13 +11,14 @@ namespace DbTableExporter
     {
         public static int ExportAllTables(string connectionString, string dbType, string outputFolder, Action<string> log = null)
         {
-            IDbConnection connection;
-            if (dbType.ToLower().Contains("sql"))
-                connection = new SqlConnection(connectionString);
-            else if (dbType.ToLower().Contains("oracle"))
-                connection = new OracleConnection(connectionString);
-            else
-                throw new ArgumentException("Unsupported dbType.");
+
+            Directory.CreateDirectory(outputFolder);
+
+            using IDbConnection connection = dbType.ToLower().Contains("sql")
+                ? new SqlConnection(connectionString)
+                : dbType.ToLower().Contains("oracle")
+                    ? new OracleConnection(connectionString)
+                    : throw new ArgumentException("Unsupported dbType.");
 
             Directory.CreateDirectory(outputFolder);
 
@@ -42,8 +43,7 @@ namespace DbTableExporter
                     }
                 }
 
-                return count;
-            }
+            return count;
         }
 
         private static List<string> GetTableNames(IDbConnection conn, string dbType)
