@@ -11,44 +11,34 @@ namespace DbTableExporter
     {
         public static int ExportAllTables(string connectionString, string dbType, string outputFolder, Action<string> log = null)
         {
-            IDbConnection connection;
-            if (dbType.ToLower().Contains("sql"))
-                connection = new SqlConnection(connectionString);
-            else if (dbType.ToLower().Contains("oracle"))
-                connection = new OracleConnection(connectionString);
-            else
-                throw new ArgumentException("Unsupported dbType.");
-
-            return ExportAllTables(connection, dbType, outputFolder, log);
-        }
-
-        public static int ExportAllTables(IDbConnection connection, string dbType, string outputFolder, Action<string> log = null)
-        {
             Directory.CreateDirectory(outputFolder);
 
-            using (connection)
+            using IDbConnection connection = dbType.ToLower().Contains("sql")
+                ? new SqlConnection(connectionString)
+                : dbType.ToLower().Contains("oracle")
+                    ? new OracleConnection(connectionString)
+                    : throw new ArgumentException("Unsupported dbType.");
+
+            connection.Open();
+            var tableNames = GetTableNames(connection, dbType);
+
+            int count = 0;
+            foreach (var table in tableNames)
             {
-                connection.Open();
-                var tableNames = GetTableNames(connection, dbType);
-
-                int count = 0;
-                foreach (var table in tableNames)
+                string filePath = Path.Combine(outputFolder, $"{table}.csv");
+                try
                 {
-                    string filePath = Path.Combine(outputFolder, $"{table}.csv");
-                    try
-                    {
-                        ExportTable(connection, table, filePath);
-                        count++;
-                        log?.Invoke($"Exported {table} ({filePath})");
-                    }
-                    catch (Exception ex)
-                    {
-                        log?.Invoke($"Failed to export {table}: {ex.Message}");
-                    }
+                    ExportTable(connection, table, filePath);
+                    count++;
+                    log?.Invoke($"Exported {table} ({filePath})");
                 }
-
-                return count;
+                catch (Exception ex)
+                {
+                    log?.Invoke($"Failed to export {table}: {ex.Message}");
+                }
             }
+
+            return count;
         }
 
         private static List<string> GetTableNames(IDbConnection conn, string dbType)
