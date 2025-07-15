@@ -11,6 +11,7 @@ namespace DbTableExporter
     {
         public static int ExportAllTables(string connectionString, string dbType, string outputFolder, Action<string> log = null)
         {
+
             Directory.CreateDirectory(outputFolder);
 
             using IDbConnection connection = dbType.ToLower().Contains("sql")
@@ -19,24 +20,28 @@ namespace DbTableExporter
                     ? new OracleConnection(connectionString)
                     : throw new ArgumentException("Unsupported dbType.");
 
-            connection.Open();
-            var tableNames = GetTableNames(connection, dbType);
+            Directory.CreateDirectory(outputFolder);
 
-            int count = 0;
-            foreach (var table in tableNames)
+            using (connection)
             {
-                string filePath = Path.Combine(outputFolder, $"{table}.csv");
-                try
+                connection.Open();
+                var tableNames = GetTableNames(connection, dbType);
+
+                int count = 0;
+                foreach (var table in tableNames)
                 {
-                    ExportTable(connection, table, filePath);
-                    count++;
-                    log?.Invoke($"Exported {table} ({filePath})");
+                    string filePath = Path.Combine(outputFolder, $"{table}.csv");
+                    try
+                    {
+                        ExportTable(connection, table, filePath);
+                        count++;
+                        log?.Invoke($"Exported {table} ({filePath})");
+                    }
+                    catch (Exception ex)
+                    {
+                        log?.Invoke($"Failed to export {table}: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    log?.Invoke($"Failed to export {table}: {ex.Message}");
-                }
-            }
 
             return count;
         }
